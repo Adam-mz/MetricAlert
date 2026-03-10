@@ -19,7 +19,19 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 
 	parts := strings.Split(r.URL.Path, "/")
-	if len(parts) < 5 || parts[1] != "update" {
+	if len(parts) < 3 || parts[1] != "update" {
+		http.Error(w, "invalid request", http.StatusBadRequest)
+		return
+	}
+
+	// нет имени метрики
+	if len(parts) < 4 || parts[3] == "" {
+		http.Error(w, "metric name required", http.StatusNotFound)
+		return
+	}
+
+	// нет значения
+	if len(parts) < 5 {
 		http.Error(w, "invalid request", http.StatusBadRequest)
 		return
 	}
