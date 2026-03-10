@@ -19,8 +19,8 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 
 	parts := strings.Split(r.URL.Path, "/")
-	if len(parts) < 5 {
-		http.Error(w, "invalid request", http.StatusNotFound)
+	if len(parts) < 5 || parts[1] != "update" {
+		http.Error(w, "invalid request", http.StatusBadRequest)
 		return
 	}
 
