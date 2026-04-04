@@ -5,17 +5,30 @@ import (
 
 	"github.com/Adam-mz/MetricAlert/internal/handler"
 	"github.com/Adam-mz/MetricAlert/internal/storage"
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 )
 
 func main() {
 	storage := storage.NewMemStorage()
 
-	h := handler.Handler{Storage: storage}
-
-	mux := http.NewServeMux()
-
-	mux.HandleFunc(`/`, h.Update)
+	mux := newMux(storage)
 	if err := http.ListenAndServe(`:8080`, mux); err != nil {
 		panic(err)
 	}
+}
+
+func newMux(storage *storage.MemStorage) *chi.Mux {
+	h := handler.Handler{Storage: storage}
+
+	r := chi.NewRouter()
+
+	r.Use(middleware.Logger)
+	r.Use(middleware.Recoverer)
+
+	r.Post("/update/{type}/{name}/{value}", h.Update)
+	r.Get("/value/{type}/{name}", h.GetValue)
+	r.Get("/", h.GetAllMetrics)
+
+	return r
 }
