@@ -81,18 +81,22 @@ func sendGauge(metric string, runtime float64) {
 
 	fmt.Println(url)
 
-	_, err := http.Post(url, "text/plain", nil)
+	resp, err := http.Post(url, "text/plain", nil)
 	if err != nil {
+		panic(err)
+	}
+	if err := resp.Body.Close(); err != nil {
 		panic(err)
 	}
 }
 
 func sendCount(metric string, runtime int64) {
 	url := fmt.Sprintf("%s/update/counter/%s/%d", baseURL, metric, runtime)
-	fmt.Println(url)
-	fmt.Println()
-	_, err := http.Post(url, "text/plain", nil)
+	resp, err := http.Post(url, "text/plain", nil)
 	if err != nil {
+		panic(err)
+	}
+	if err := resp.Body.Close(); err != nil {
 		panic(err)
 	}
 }
