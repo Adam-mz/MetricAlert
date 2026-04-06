@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"net/http"
 
 	"github.com/Adam-mz/MetricAlert/internal/handler"
@@ -11,9 +12,10 @@ import (
 
 func main() {
 	storage := storage.NewMemStorage()
-
+	addr := flag.String("a", "localhost:8080", "HTTP server address")
+	flag.Parse()
 	mux := newMux(storage)
-	if err := http.ListenAndServe(`:8080`, mux); err != nil {
+	if err := http.ListenAndServe(*addr, mux); err != nil {
 		panic(err)
 	}
 }

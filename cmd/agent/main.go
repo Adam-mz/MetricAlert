@@ -1,20 +1,34 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"math/rand/v2"
 	"net/http"
 	"runtime"
+	"strings"
 	"time"
 )
 
 var pollCount = 0
-var baseURL = "http://localhost:8080"
+var baseURL string
+var pollInterval int
+var reportInterval int
 
 func main() {
+	flag.StringVar(&baseURL, "a", "localhost:8080", "Server address")
+	flag.IntVar(&pollInterval, "p", 2, "Poll interval in seconds")
+	flag.IntVar(&reportInterval, "r", 10, "Report interval in seconds")
+	flag.Parse()
+
+	if !strings.HasPrefix(baseURL, "http://") && !strings.HasPrefix(baseURL, "https://") {
+		baseURL = "http://" + baseURL
+	}
+	baseURL = strings.TrimRight(baseURL, "/")
+
 	var mem runtime.MemStats
-	tickerTwo := time.NewTicker(2 * time.Second)
-	tickerTen := time.NewTicker(10 * time.Second)
+	tickerTwo := time.NewTicker(time.Duration(pollInterval) * time.Second)
+	tickerTen := time.NewTicker(time.Duration(reportInterval) * time.Second)
 	defer tickerTwo.Stop()
 	defer tickerTen.Stop()
 	for {
