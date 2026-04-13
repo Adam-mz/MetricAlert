@@ -37,7 +37,6 @@ func newMux(storage *storage.MemStorage) *chi.Mux {
 
 	r := chi.NewRouter()
 
-	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 
 	r.Post("/update/{type}/{name}/{value}", h.Update)
