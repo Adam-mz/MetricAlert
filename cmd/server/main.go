@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"net/http"
+	"os"
 
 	"github.com/Adam-mz/MetricAlert/internal/handler"
 	"github.com/Adam-mz/MetricAlert/internal/storage"
@@ -10,12 +11,23 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 )
 
+type Config struct {
+	ServerAddr string
+}
+
 func main() {
+	cfg := Config{}
+	
 	storage := storage.NewMemStorage()
-	addr := flag.String("a", "localhost:8080", "HTTP server address")
+	flag.StringVar(&cfg.ServerAddr, "a", "localhost:8080", "HTTP server address")
 	flag.Parse()
+
+	if addr := os.Getenv("ADDRESS"); addr != "" {
+		cfg.ServerAddr = addr
+	}
+
 	mux := newMux(storage)
-	if err := http.ListenAndServe(*addr, mux); err != nil {
+	if err := http.ListenAndServe(cfg.ServerAddr, mux); err != nil {
 		panic(err)
 	}
 }
@@ -25,7 +37,6 @@ func newMux(storage *storage.MemStorage) *chi.Mux {
 
 	r := chi.NewRouter()
 
-	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 
 	r.Post("/update/{type}/{name}/{value}", h.Update)

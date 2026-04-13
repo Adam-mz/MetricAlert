@@ -37,6 +37,10 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
 
+      - name: Cleanup local caches from repository tree
+        run: |
+          rm -rf .gocache .gomodcache
+
       - name: Download autotests binaries
         uses: robinraju/release-downloader@v1.8
         with:
