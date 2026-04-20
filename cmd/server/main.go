@@ -6,9 +6,11 @@ import (
 	"os"
 
 	"github.com/Adam-mz/MetricAlert/internal/handler"
+	appmiddleware "github.com/Adam-mz/MetricAlert/internal/middleware"
 	"github.com/Adam-mz/MetricAlert/internal/storage"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"go.uber.org/zap"
 )
 
 type Config struct {
@@ -17,7 +19,7 @@ type Config struct {
 
 func main() {
 	cfg := Config{}
-	
+
 	storage := storage.NewMemStorage()
 	flag.StringVar(&cfg.ServerAddr, "a", "localhost:8080", "HTTP server address")
 	flag.Parse()
@@ -26,17 +28,25 @@ func main() {
 		cfg.ServerAddr = addr
 	}
 
-	mux := newMux(storage)
+	logger, err := zap.NewProduction()
+	if err != nil {
+		panic(err)
+	}
+	defer logger.Sync()
+
+	mux := newMux(storage, logger)
 	if err := http.ListenAndServe(cfg.ServerAddr, mux); err != nil {
 		panic(err)
 	}
 }
 
-func newMux(storage *storage.MemStorage) *chi.Mux {
+func newMux(storage *storage.MemStorage, logger *zap.Logger) *chi.Mux {
 	h := handler.Handler{Storage: storage}
 
 	r := chi.NewRouter()
 
+	// Middleware
+	r.Use(appmiddleware.RequestLogger(logger))
 	r.Use(middleware.Recoverer)
 
 	r.Post("/update/{type}/{name}/{value}", h.Update)
