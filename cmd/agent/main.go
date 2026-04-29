@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bytes"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"math/rand/v2"
@@ -10,6 +12,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	models "github.com/Adam-mz/MetricAlert/internal/model"
 )
 
 type Config struct {
@@ -105,27 +109,47 @@ func main() {
 			sendGauge(baseURL, "TotalAlloc", float64(mem.TotalAlloc))
 
 			sendGauge(baseURL, "RandomValue", rand.Float64())
-			sendCounter(baseURL, "PollCount", pollCount)
+			if sendCounter(baseURL, "PollCount", pollCount) {
+				pollCount = 0
+			}
 		}
 	}
 }
 
 func sendGauge(baseURL, metric string, value float64) {
-	url := fmt.Sprintf("%s/update/gauge/%s/%f", baseURL, metric, value)
-	resp, err := http.Post(url, "text/plain", nil)
-	if err != nil {
-		fmt.Printf("Error sending gauge %s: %v\n", metric, err)
-		return
-	}
-	resp.Body.Close()
+	sendMetric(baseURL, models.Metrics{
+		ID:    metric,
+		MType: models.Gauge,
+		Value: &value,
+	})
 }
 
-func sendCounter(baseURL, metric string, value int64) {
-	url := fmt.Sprintf("%s/update/counter/%s/%d", baseURL, metric, value)
-	resp, err := http.Post(url, "text/plain", nil)
-	if err != nil {
-		fmt.Printf("Error sending counter %s: %v\n", metric, err)
-		return
+func sendCounter(baseURL, metric string, delta int64) bool {
+	return sendMetric(baseURL, models.Metrics{
+		ID:    metric,
+		MType: models.Counter,
+		Delta: &delta,
+	})
+}
+
+func sendMetric(baseURL string, metric models.Metrics) bool {
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(metric); err != nil {
+		fmt.Printf("Error encoding metric %s: %v\n", metric.ID, err)
+		return false
 	}
-	resp.Body.Close()
+
+	resp, err := http.Post(baseURL+"/update/", "application/json", &buf)
+	if err != nil {
+		fmt.Printf("Error sending metric %s: %v\n", metric.ID, err)
+		return false
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		fmt.Printf("Error sending metric %s: server returned %d\n", metric.ID, resp.StatusCode)
+		return false
+	}
+
+	return true
 }

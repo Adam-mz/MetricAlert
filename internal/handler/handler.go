@@ -1,10 +1,12 @@
 package handler
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strconv"
 
+	models "github.com/Adam-mz/MetricAlert/internal/model"
 	"github.com/Adam-mz/MetricAlert/internal/storage"
 	"github.com/go-chi/chi/v5"
 )
@@ -86,6 +88,7 @@ func (h *Handler) GetValue(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		fmt.Fprintf(w, "%v", value)
+
 	case "counter":
 		value, exists := h.Storage.GetCounter(name)
 		if !exists {
@@ -105,4 +108,90 @@ func (h *Handler) GetAllMetrics(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 
 	fmt.Fprint(w, h.Storage.GetAll())
+}
+
+func (h *Handler) UpdateJSON(w http.ResponseWriter, r *http.Request) {
+	var metric models.Metrics
+
+	if err := json.NewDecoder(r.Body).Decode(&metric); err != nil {
+		http.Error(w, "invalid json", http.StatusBadRequest)
+		return
+	}
+
+	if metric.ID == "" {
+		http.Error(w, "missing metric id", http.StatusBadRequest)
+		return
+	}
+
+	switch metric.MType {
+	case models.Gauge:
+		if metric.Value == nil {
+			http.Error(w, "missing gauge value", http.StatusBadRequest)
+			return
+		}
+
+		h.Storage.UpdateGauge(metric.ID, *metric.Value)
+		value, _ := h.Storage.GetGauge(metric.ID)
+		metric.Value = &value
+		metric.Delta = nil
+
+	case models.Counter:
+		if metric.Delta == nil {
+			http.Error(w, "missing counter delta", http.StatusBadRequest)
+			return
+		}
+
+		h.Storage.UpdateCounter(metric.ID, *metric.Delta)
+		delta, _ := h.Storage.GetCounter(metric.ID)
+		metric.Delta = &delta
+		metric.Value = nil
+
+	default:
+		http.Error(w, "unknown metric type", http.StatusBadRequest)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(metric)
+	
+}
+func (h *Handler) GetValueJSON(w http.ResponseWriter, r *http.Request) {
+	var metric models.Metrics
+
+	if err := json.NewDecoder(r.Body).Decode(&metric); err != nil {
+		http.Error(w, "invalid json", http.StatusBadRequest)
+		return
+	}
+
+	if metric.ID == "" {
+		http.Error(w, "missing metric id", http.StatusBadRequest)
+		return
+	}
+
+	switch metric.MType {
+	case models.Gauge:
+		value, ok := h.Storage.GetGauge(metric.ID)
+		if !ok {
+			http.Error(w, "metric not found", http.StatusNotFound)
+			return
+		}
+		metric.Value = &value
+		metric.Delta = nil
+
+	case models.Counter:
+		delta, ok := h.Storage.GetCounter(metric.ID)
+		if !ok {
+			http.Error(w, "metric not found", http.StatusNotFound)
+			return
+		}
+		metric.Delta = &delta
+		metric.Value = nil
+
+	default:
+		http.Error(w, "unknown metric type", http.StatusBadRequest)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(metric)
 }

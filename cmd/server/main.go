@@ -52,6 +52,8 @@ func newMux(storage *storage.MemStorage, logger *zap.Logger) *chi.Mux {
 	r.Post("/update/{type}/{name}/{value}", h.Update)
 	r.Get("/value/{type}/{name}", h.GetValue)
 	r.Get("/", h.GetAllMetrics)
+	r.Post("/update/", h.UpdateJSON)
+	r.Post("/value/", h.GetValueJSON)
 
 	return r
 }
