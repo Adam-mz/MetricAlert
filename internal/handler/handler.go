@@ -3,6 +3,7 @@ package handler
 import (
 	"encoding/json"
 	"fmt"
+	"mime"
 	"net/http"
 	"strconv"
 
@@ -111,6 +112,11 @@ func (h *Handler) GetAllMetrics(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) UpdateJSON(w http.ResponseWriter, r *http.Request) {
+	if !isJSONContentType(r) {
+		http.Error(w, "unsupported content type", http.StatusUnsupportedMediaType)
+		return
+	}
+
 	var metric models.Metrics
 
 	if err := json.NewDecoder(r.Body).Decode(&metric); err != nil {
@@ -153,9 +159,14 @@ func (h *Handler) UpdateJSON(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(metric)
-	
+
 }
 func (h *Handler) GetValueJSON(w http.ResponseWriter, r *http.Request) {
+	if !isJSONContentType(r) {
+		http.Error(w, "unsupported content type", http.StatusUnsupportedMediaType)
+		return
+	}
+
 	var metric models.Metrics
 
 	if err := json.NewDecoder(r.Body).Decode(&metric); err != nil {
@@ -194,4 +205,14 @@ func (h *Handler) GetValueJSON(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(metric)
+}
+
+func isJSONContentType(r *http.Request) bool {
+	contentType := r.Header.Get("Content-Type")
+	mediaType, _, err := mime.ParseMediaType(contentType)
+	if err != nil {
+		return false
+	}
+
+	return mediaType == "application/json"
 }

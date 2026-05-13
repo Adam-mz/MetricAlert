@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"compress/gzip"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -134,12 +135,30 @@ func sendCounter(baseURL, metric string, delta int64) bool {
 
 func sendMetric(baseURL string, metric models.Metrics) bool {
 	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(metric); err != nil {
+
+	gzWriter := gzip.NewWriter(&buf)
+	if err := json.NewEncoder(gzWriter).Encode(metric); err != nil {
 		fmt.Printf("Error encoding metric %s: %v\n", metric.ID, err)
+		gzWriter.Close()
 		return false
 	}
 
-	resp, err := http.Post(baseURL+"/update/", "application/json", &buf)
+	if err := gzWriter.Close(); err != nil {
+		fmt.Printf("Error compressing metric %s: %v\n", metric.ID, err)
+		return false
+	}
+
+	req, err := http.NewRequest(http.MethodPost, baseURL+"/update/", &buf)
+	if err != nil {
+		fmt.Printf("Error creating request for metric %s: %v\n", metric.ID, err)
+		return false
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Encoding", "gzip")
+	req.Header.Set("Accept-Encoding", "gzip")
+
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		fmt.Printf("Error sending metric %s: %v\n", metric.ID, err)
 		return false

@@ -47,6 +47,7 @@ func newMux(storage *storage.MemStorage, logger *zap.Logger) *chi.Mux {
 
 	// Middleware
 	r.Use(appmiddleware.RequestLogger(logger))
+	r.Use(appmiddleware.Gzip)
 	r.Use(middleware.Recoverer)
 
 	r.Post("/update/{type}/{name}/{value}", h.Update)
